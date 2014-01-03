@@ -6,6 +6,7 @@
 class Less_Environment{
 
 	public $paths = array();			// option - unmodified - paths to search for imports on
+	public $loader = null;				// option - callback function used to fetch imported content
 	static $files = array();			// list of files that have been imported, used for import-once
 	public $relativeUrls;				// option - whether to adjust URL's to be relative
 	public $rootpath;					// option - rootpath to append to URL's
@@ -71,6 +72,9 @@ class Less_Environment{
 		}
 		if( isset($options['strictUnits']) ){
 			$this->strictUnits = (bool)$options['strictUnits'];
+		}
+		if (isset($options['loader']) && is_callable($options['loader'])) {
+			$this->loader = $options['loader'];
 		}
 
 
@@ -198,5 +202,27 @@ class Less_Environment{
 
 	public function addFrames(array $frames){
 		$this->frames = array_merge($this->frames, $frames);
+	}
+
+	/**
+	 * Check is a loader is set
+	 * @return bool
+	 */
+	public function isLoaderSet() {
+		return ($this->loader != null && is_callable($this->loader));
+	}
+
+	/**
+	 * Use loader to fetch LESS content
+	 * @param string Name of the resource to fetch
+	 * @return string Content of the resource to fetch
+	 */
+	public function load($name) {
+		if ($this->isLoaderSet()) {
+			$content = call_user_func($this->loader, $name);
+			if (is_null($content) || $content === false) throw new Less_ParserException(sprintf('Can\'t parse `%s` using custom loader', $name));
+			else return $content;
+		}
+		else throw new Less_ParserException(sprintf('Loader is not set.'));
 	}
 }
